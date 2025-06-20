@@ -1,0 +1,8 @@
+# Laravel
+/backend/app/vendor
+/backend/app/.env
+
+# Node.js
+/frontend/.next
+/frontend/node_modules
+/frontend/.env.local
