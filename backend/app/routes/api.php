@@ -4,6 +4,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EventController;
 
 // De middleware-stack die cookies & sessies opzet
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -37,6 +38,7 @@ Route::middleware([
         Route::get('/user', function (Request $request) {
             return $request->user();
         });
+        Route::apiResource('events', EventController::class);
         // Hier kun je alle andere apiResource- of POST/PUT/DELETE routes zetten
     });
 });

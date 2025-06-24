@@ -4,62 +4,104 @@ namespace App\Http\Controllers;
 
 use App\Models\Event;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class EventController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
-     * Display a listing of the resource.
+     * GET /api/events
      */
-    public function index()
+    public function index(): JsonResponse
     {
-        //
+        $events = Event::where('organizer_id', Auth::id())
+            ->orWhere('privacy', 'public')
+            ->get();
+
+        return response()->json($events);
     }
 
     /**
-     * Show the form for creating a new resource.
+     * POST /api/events
      */
-    public function create()
+    public function store(Request $r): JsonResponse
     {
-        //
+        // 1) valideer input en bewaar in $data
+        $data = $r->validate([
+            'name'                        => 'required|string|max:255',
+            'description'                 => 'nullable|string',
+            'deadline'                    => 'required|date',
+            'privacy'                     => 'required|in:public,private',
+            'password_protected'          => 'boolean',
+            'password'                    => 'nullable|string|min:4',
+            'anonymous_contributions'     => 'boolean',
+            'show_contribution_breakdown' => 'boolean',
+        ]);
+
+        // 2) bouw de payload
+        if (! empty($data['password_protected']) && ! empty($data['password'])) {
+            $data['password_hash'] = bcrypt($data['password']);
+        }
+
+        $data['organizer_id'] = Auth::id();
+
+        // 3) create en return
+        $event = Event::create($data);
+        return response()->json($event, 201);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * GET /api/events/{event}
      */
-    public function store(Request $request)
+    public function show(Event $event): JsonResponse
     {
-        //
+        if ($event->privacy === 'private' && $event->organizer_id !== Auth::id()) {
+            abort(403);
+        }
+        return response()->json($event);
     }
 
     /**
-     * Display the specified resource.
+     * PUT /api/events/{event}
      */
-    public function show(Event $event)
+    public function update(Request $r, Event $event): JsonResponse
     {
-        //
+        // controleer of je dit mag
+        $this->authorize('update', $event);
+
+        // 1) valideer input
+        $data = $r->validate([
+            'name'                        => 'sometimes|required|string|max:255',
+            'description'                 => 'nullable|string',
+            'deadline'                    => 'sometimes|required|date',
+            'privacy'                     => 'sometimes|required|in:public,private',
+            'password_protected'          => 'boolean',
+            'password'                    => 'nullable|string|min:4',
+            'anonymous_contributions'     => 'boolean',
+            'show_contribution_breakdown' => 'boolean',
+        ]);
+
+        // 2) pas password-hash toe indien nodig
+        if (! empty($data['password_protected']) && ! empty($data['password'])) {
+            $data['password_hash'] = bcrypt($data['password']);
+        }
+
+        // 3) update en return
+        $event->update($data);
+        return response()->json($event);
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * DELETE /api/events/{event}
      */
-    public function edit(Event $event)
+    public function destroy(Event $event): Response
     {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Event $event)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Event $event)
-    {
-        //
+        $this->authorize('delete', $event);
+        $event->delete();
+        return response()->noContent();
     }
 }

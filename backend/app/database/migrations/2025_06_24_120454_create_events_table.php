@@ -13,15 +13,19 @@ return new class extends Migration
     {
         Schema::create('events', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('organizer_id')
+                ->constrained('users')
+                ->cascadeOnDelete();
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->dateTime('deadline');
+            $table->enum('privacy', ['public', 'private'])
+                ->default('public');
+            $table->boolean('password_protected')->default(false);
+            $table->string('password_hash')->nullable();
+            $table->boolean('anonymous_contributions')->default(false);
+            $table->boolean('show_contribution_breakdown')->default(true);
             $table->timestamps();
         });
-    }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('events');
     }
 };
