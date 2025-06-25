@@ -102,4 +102,9 @@ class EventController extends Controller
         $event->delete();
         return response()->noContent();
     }
+    public function showAdmin(string $admin_code)
+    {
+        $event = Event::where('admin_code', $admin_code)->firstOrFail();
+        return response()->json($event);
+    }
 }

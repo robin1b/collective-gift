@@ -21,6 +21,8 @@ use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 |
 */
 
+Route::get('/events/{admin_code}', [EventController::class, 'showAdmin']);
+
 Route::post('/events', [EventController::class, 'store']);
 Route::get('/events',         [EventController::class, 'index']);
 Route::get('/events/{event}', [EventController::class, 'show']);
