@@ -107,4 +107,24 @@ class EventController extends Controller
         $event = Event::where('admin_code', $admin_code)->firstOrFail();
         return response()->json($event);
     }
+    public function updateAdmin(Request $request, string $admin_code)
+    {
+        // 1) Validatie
+        $data = $request->validate([
+            'admin_name'  => 'sometimes|required|string|max:255',
+            'name'        => 'sometimes|required|string|max:255',
+            'description' => 'nullable|string',
+            'deadline'    => 'sometimes|required|date',
+            'privacy'     => 'sometimes|required|in:public,private',
+            'goal_amount' => 'nullable|numeric|min:0',
+        ]);
+
+        // 2) Vind het event
+        $event = Event::where('admin_code', $admin_code)->firstOrFail();
+
+        // 3) Update en return
+        $event->update($data);
+
+        return response()->json($event);
+    }
 }
