@@ -20,6 +20,9 @@ class CreateContributionsTable extends Migration
             // Voor guest-flow kun je anonymous weglaten of default zetten:
             $table->boolean('anonymous')->default(false);
             $table->timestamp('created_at')->useCurrent();
+            $table->string('status')->default('pending');        // pending, paid, failed
+            $table->string('stripe_payment_intent_id')->nullable();
+            $table->string('stripe_charge_id')->nullable();
         });
     }
 

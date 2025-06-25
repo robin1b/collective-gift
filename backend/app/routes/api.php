@@ -12,6 +12,11 @@ use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use App\Http\Controllers\{
+    StripeController,
+    ContributionController,
+};
+
 /*
 |--------------------------------------------------------------------------
 | Publice Events CRUD (zonder CSRF of Auth)
@@ -21,9 +26,18 @@ use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 |
 */
 
+Route::get('/admin/connect', [StripeController::class, 'getConnectUrl']);
+Route::get('/admin/oauth/callback', [StripeController::class, 'handleConnectCallback']);
+
+
 Route::get('/events/{admin_code}', [EventController::class, 'showAdmin']);
 Route::put('/events/{admin_code}', [EventController::class, 'updateAdmin']);
+
+// Gast-view & contribute
 Route::get('/events/join/{join_code}', [EventController::class, 'showGuest']);
+Route::post('/events/join/{join_code}/contribute', [ContributionController::class, 'storeGuest']);
+
+
 
 Route::post('/events', [EventController::class, 'store']);
 Route::get('/events',         [EventController::class, 'index']);

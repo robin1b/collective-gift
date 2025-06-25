@@ -13,6 +13,9 @@ class Contribution extends Model
         'user_id',      // voor later
         'amount',
         'anonymous',    // fix
+        'status',       // pending, paid, failed
+        'stripe_payment_intent_id', // voor later
+        'stripe_charge_id', // voor later
     ];
 
     // 2) Relatie terug naar Event
