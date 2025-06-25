@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Str;
 
 class EventController extends Controller
 {
@@ -28,32 +29,29 @@ class EventController extends Controller
     /**
      * POST /api/events
      */
-    public function store(Request $r): JsonResponse
+    public function store(Request $request)
     {
-        // 1) valideer input en bewaar in $data
-        $data = $r->validate([
-            'name'                        => 'required|string|max:255',
-            'description'                 => 'nullable|string',
-            'deadline'                    => 'required|date',
-            'privacy'                     => 'required|in:public,private',
-            'password_protected'          => 'boolean',
-            'password'                    => 'nullable|string|min:4',
-            'anonymous_contributions'     => 'boolean',
-            'show_contribution_breakdown' => 'boolean',
+        $data = $request->validate([
+            'admin_name'  => 'required|string|max:255',
+            'name'        => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'deadline'    => 'required|date',
+            'privacy'     => 'required|in:public,private',
+            'goal_amount' => 'nullable|numeric|min:0',
         ]);
 
-        // 2) bouw de payload
-        if (! empty($data['password_protected']) && ! empty($data['password'])) {
-            $data['password_hash'] = bcrypt($data['password']);
-        }
+        $data['organizer_id'] = 1; // placeholder
+        $data['admin_code']   = Str::random(16);
+        $data['join_code']    = Str::upper(Str::random(8));
 
-        $data['organizer_id'] = Auth::id();
-
-        // 3) create en return
         $event = Event::create($data);
-        return response()->json($event, 201);
-    }
 
+        return response()->json([
+            'id'          => $event->id,
+            'admin_code'  => $event->admin_code,
+            'join_code'   => $event->join_code,
+        ], 201);
+    }
     /**
      * GET /api/events/{event}
      */

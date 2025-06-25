@@ -11,15 +11,16 @@ class Event extends Model
 
     protected $fillable = [
         'organizer_id',
+        'admin_name',
+        'admin_code',
+        'join_code',
         'name',
         'description',
         'deadline',
         'privacy',
-        'password_protected',
-        'password_hash',
-        'anonymous_contributions',
-        'show_contribution_breakdown',
+        'goal_amount',
     ];
+
 
     public function organizer()
     {
