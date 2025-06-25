@@ -127,4 +127,12 @@ class EventController extends Controller
 
         return response()->json($event);
     }
+    public function showGuest(string $join_code)
+    {
+        $event = Event::with('contributions')
+            ->where('join_code', $join_code)
+            ->firstOrFail();
+
+        return response()->json($event);
+    }
 }
