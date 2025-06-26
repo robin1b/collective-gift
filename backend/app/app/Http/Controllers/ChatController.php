@@ -2,44 +2,61 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\NewChatMessage;
 use App\Models\ChatMessage;
 use App\Models\Event;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use App\Events\NewChatMessage;
 
 class ChatController extends Controller
 {
     /**
-     * Haal alle chat-berichten voor dit event.
+     * GET  /api/events/join/{join_code}/chat
+     * Retourneert alle berichten voor dit event.
      */
-    public function index(string $join_code)
+    public function index(string $join_code): JsonResponse
     {
-        $event = Event::where('join_code', $join_code)->firstOrFail();
+        $event = Event::where('join_code', $join_code)
+            ->firstOrFail();
 
-        return $event
+        // Haal de berichten op, inclusief user name
+        $messages = $event
             ->chatMessages()
             ->with('user:id,name')
             ->orderBy('created_at')
             ->get();
+
+        return response()->json($messages);
     }
 
     /**
-     * Sla een nieuw chat-bericht op en broadcast het.
+     * POST /api/events/join/{join_code}/chat
+     * Slaat een nieuw bericht op (alleen voor ingelogde users).
      */
-    public function store(Request $request, string $join_code)
+    public function store(Request $request, string $join_code): JsonResponse
     {
+        // 1) Zorg dat er een ingelogde user is
+        $user = $request->user();
+        if (! $user) {
+            abort(401, 'Niet ingelogd');
+        }
+
+        // 2) Valideer input
         $data = $request->validate([
-            'message' => 'required|string',
+            'message' => 'required|string|max:1000',
         ]);
 
-        $event = Event::where('join_code', $join_code)->firstOrFail();
+        // 3) Vind het event
+        $event = Event::where('join_code', $join_code)
+            ->firstOrFail();
 
+        // 4) Maak en sla het nieuwe bericht op
         $msg = $event->chatMessages()->create([
-            'user_id' => $request->user()?->id,  // let op: geen () na ->id
+            'user_id' => $user->id,
             'message' => $data['message'],
         ]);
 
-        // broadcast naar anderen in dit kanaal
+        // 5) Broadcast naar anderen
         broadcast(new NewChatMessage($msg))->toOthers();
 
         return response()->json($msg, 201);

@@ -23,10 +23,11 @@ Route::get('/events',                       [EventController::class, 'index']);
 Route::get('/events/{event}',               [EventController::class, 'show']);
 // Gast-view (met join_code)
 Route::get('/events/join/{join_code}',      [EventController::class, 'showGuest']);
-// Gast-chat
-Route::get('/events/join/{join_code}/chat', [ChatController::class,   'index']);
-// Gast-chat posten
-Route::post('/events/join/{join_code}/chat', [ChatController::class,   'store']);
+// Gast-view: chat bekijken voor iedereen
+Route::get(
+    '/events/join/{join_code}/chat',
+    [ChatController::class, 'index']
+);
 // Gast-bijdrage
 Route::post(
     '/events/join/{join_code}/contribute',
@@ -54,5 +55,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete(
         '/events/{event}',
         [EventController::class, 'destroy']
+    );
+    // chat voor ingelogde user
+
+    Route::post(
+        '/events/join/{join_code}/chat',
+        [ChatController::class, 'store']
     );
 });
