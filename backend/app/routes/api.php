@@ -8,7 +8,11 @@ use App\Http\Controllers\{
     EventController,
     ContributionController,
     ChatController,
+    VoteController,
+    GiftIdeaController
 };
+use App\Http\Controllers\Admin\RecommendedGiftController;
+
 
 // ───────── Publiek ─────────
 // admin-view van een event (door admin_code):
@@ -32,6 +36,23 @@ Route::get(
 Route::post(
     '/events/join/{join_code}/contribute',
     [ContributionController::class, 'storeGuest']
+);
+// Gast-stemmen (anoniem)
+Route::get(
+    '/events/join/{join_code}/votes',
+    [VoteController::class, 'indexGuest']
+);
+Route::post(
+    '/events/join/{join_code}/votes',
+    [VoteController::class, 'storeGuest']
+);
+Route::get(
+    '/events/join/{join_code}/gift_ideas',
+    [GiftIdeaController::class, 'indexGuest']
+);
+Route::post(
+    '/events/join/{join_code}/gift_ideas',
+    [GiftIdeaController::class, 'storeGuest']
 );
 
 // ───────── Authenticatie ─────────
@@ -63,3 +84,9 @@ Route::middleware('auth:sanctum')->group(function () {
         [ChatController::class, 'store']
     );
 });
+Route::middleware(['auth:sanctum', 'can:create,App\Models\RecommendedGift'])
+    ->prefix('admin')
+    ->group(function () {
+        Route::apiResource('recommended_gifts', RecommendedGiftController::class)
+            ->except(['show']);
+    });

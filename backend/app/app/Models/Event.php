@@ -37,4 +37,8 @@ class Event extends Model
     {
         return $this->hasMany(ChatMessage::class);
     }
+    public function giftIdeas()
+    {
+        return $this->hasMany(GiftIdea::class);
+    }
 }

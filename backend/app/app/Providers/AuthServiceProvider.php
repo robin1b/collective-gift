@@ -5,6 +5,9 @@ namespace App\Providers;
 use App\Models\Event;
 use App\Policies\EventPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use App\Models\RecommendedGift;
+use App\Policies\RecommendedGiftPolicy;
+
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -13,6 +16,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         Event::class => EventPolicy::class,
+        RecommendedGift::class => RecommendedGiftPolicy::class,
     ];
 
     /**
