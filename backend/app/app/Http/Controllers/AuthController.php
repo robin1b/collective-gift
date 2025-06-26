@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
@@ -70,5 +71,37 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return response()->json(['message' => 'Logged out']);
+    }
+
+    public function redirectToGoogle()
+    {
+        return Socialite::driver('google')
+            ->redirect();
+    }
+
+    // 2) Callback ophalen, user vinden of aanmaken, token genereren
+    public function handleGoogleCallback(Request $request)
+    {
+        // 1. Haal Google-user op
+        $googleUser = Socialite::driver('google')
+            ->user();
+
+        // 2. Vind of maak interne User
+        $user = User::firstOrCreate([
+            'email' => $googleUser->getEmail()
+        ], [
+            'name'     => $googleUser->getName(),
+            'avatar'   => $googleUser->getAvatar(),
+            'provider' => 'google',
+            'provider_id' => $googleUser->getId(),
+            // je fillable / casts in User model moeten 'provider' & 'provider_id' bevatten
+        ]);
+
+        // 3. Maak Sanctum-token
+        $token = $user->createToken('chat-session')->plainTextToken;
+
+        // 4. Redirect terug naar je frontend, met token in query
+        $frontend = config('app.frontend_url');
+        return redirect($frontend . '/login/callback?token=' . $token);
     }
 }

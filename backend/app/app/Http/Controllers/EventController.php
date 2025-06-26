@@ -6,21 +6,43 @@ use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
+use Illuminate\Support\Str;
+
+// Zorg dat deze twee imports aanwezig zijn:
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Support\Str;
 
 class EventController extends Controller
 {
+    // Zet hier de trait, dan ziet Intelephense authorize() wél:
     use AuthorizesRequests;
 
     /**
      * GET /api/events
+     * Toon alle publieke events, én private events van de ingelogde user.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $events = Event::where('organizer_id', Auth::id())
-            ->orWhere('privacy', 'public')
+        $userId = Auth::id();
+
+        $events = Event::query()
+            ->where('privacy', 'public')
+            ->when($userId, fn($q) => $q->orWhere('organizer_id', $userId))
+            ->orderBy('deadline')
+            ->get();
+
+        return response()->json($events);
+    }
+
+    /**
+     * GET /api/user/events
+     * Toon louter de events van de ingelogde user.
+     */
+    public function userEvents(Request $request): JsonResponse
+    {
+        $events = $request->user()
+            ->events()
+            ->orderBy('deadline')
             ->get();
 
         return response()->json($events);
@@ -28,8 +50,9 @@ class EventController extends Controller
 
     /**
      * POST /api/events
+     * Maak een nieuw event aan voor de ingelogde user.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
             'admin_name'  => 'required|string|max:255',
@@ -40,76 +63,51 @@ class EventController extends Controller
             'goal_amount' => 'nullable|numeric|min:0',
         ]);
 
-        $data['organizer_id'] = 1; // placeholder
-        $data['admin_code']   = Str::random(16);
-        $data['join_code']    = Str::upper(Str::random(8));
+        // Unieke admin_code
+        do {
+            $data['admin_code'] = Str::random(12);
+        } while (Event::where('admin_code', $data['admin_code'])->exists());
 
+        // Unieke join_code
+        do {
+            $data['join_code'] = Str::random(8);
+        } while (Event::where('join_code', $data['join_code'])->exists());
+
+        // Koppel de organiser
+        $data['organizer_id'] = Auth::id();
+
+        // Maak het event
         $event = Event::create($data);
 
-        return response()->json([
-            'id'          => $event->id,
-            'admin_code'  => $event->admin_code,
-            'join_code'   => $event->join_code,
-        ], 201);
+        // Retourneer direct het volledige event met codes
+        return response()->json($event, 201);
     }
+
     /**
      * GET /api/events/{event}
+     * Toon een event (ID). Alleen publiek óf van jezelf als private.
      */
     public function show(Event $event): JsonResponse
     {
-        if ($event->privacy === 'private' && $event->organizer_id !== Auth::id()) {
+        if (
+            $event->privacy === 'private'
+            && $event->organizer_id !== Auth::id()
+        ) {
             abort(403);
         }
+
         return response()->json($event);
     }
 
     /**
      * PUT /api/events/{event}
+     * Werk je eigen event bij.
      */
-    public function update(Request $r, Event $event): JsonResponse
+    public function update(Request $request, Event $event): JsonResponse
     {
-        // controleer of je dit mag
+        // Policy-check: alleen eigenaar
         $this->authorize('update', $event);
 
-        // 1) valideer input
-        $data = $r->validate([
-            'name'                        => 'sometimes|required|string|max:255',
-            'description'                 => 'nullable|string',
-            'deadline'                    => 'sometimes|required|date',
-            'privacy'                     => 'sometimes|required|in:public,private',
-            'password_protected'          => 'boolean',
-            'password'                    => 'nullable|string|min:4',
-            'anonymous_contributions'     => 'boolean',
-            'show_contribution_breakdown' => 'boolean',
-        ]);
-
-        // 2) pas password-hash toe indien nodig
-        if (! empty($data['password_protected']) && ! empty($data['password'])) {
-            $data['password_hash'] = bcrypt($data['password']);
-        }
-
-        // 3) update en return
-        $event->update($data);
-        return response()->json($event);
-    }
-
-    /**
-     * DELETE /api/events/{event}
-     */
-    public function destroy(Event $event): Response
-    {
-        $this->authorize('delete', $event);
-        $event->delete();
-        return response()->noContent();
-    }
-    public function showAdmin(string $admin_code)
-    {
-        $event = Event::where('admin_code', $admin_code)->firstOrFail();
-        return response()->json($event);
-    }
-    public function updateAdmin(Request $request, string $admin_code)
-    {
-        // 1) Validatie
         $data = $request->validate([
             'admin_name'  => 'sometimes|required|string|max:255',
             'name'        => 'sometimes|required|string|max:255',
@@ -119,19 +117,37 @@ class EventController extends Controller
             'goal_amount' => 'nullable|numeric|min:0',
         ]);
 
-        // 2) Vind het event
-        $event = Event::where('admin_code', $admin_code)->firstOrFail();
-
-        // 3) Update en return
         $event->update($data);
 
         return response()->json($event);
     }
-    public function showGuest(string $join_code)
+
+    /**
+     * DELETE /api/events/{event}
+     * Verwijder je eigen event.
+     */
+    public function destroy(Event $event): Response
+    {
+        $this->authorize('delete', $event);
+        $event->delete();
+
+        return response()->noContent();
+    }
+
+    /**
+     * GET /api/events/join/{join_code}
+     * Publieke gast-view met bijdragen.
+     */
+    public function showGuest(string $join_code): JsonResponse
     {
         $event = Event::with('contributions')
             ->where('join_code', $join_code)
             ->firstOrFail();
+
+        // Gast mag private events niet zien
+        if ($event->privacy === 'private') {
+            abort(403);
+        }
 
         return response()->json($event);
     }
